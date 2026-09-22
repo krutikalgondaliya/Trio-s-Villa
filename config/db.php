@@ -1,17 +1,31 @@
 <?php
-$host = "localhost";
-$user = "root";
-$pass = "";
-$dbname = "hotel_db1"; // Match this with your local phpMyAdmin database schema name
+// Check for Railway's connection URL first (Private or Public)
+$dbUrl = getenv('MYSQL_URL') ?: getenv('MYSQL_PRIVATE_URL') ?: getenv('DATABASE_URL');
 
-$conn = new mysqli($host, $user, $pass, $dbname);
+if ($dbUrl) {
+    $dbParts = parse_url($dbUrl);
 
-// Terminate gracefully if standard system connections fail
+    $host   = $dbParts['host'];
+    $port   = isset($dbParts['port']) ? (int)$dbParts['port'] : 3306;
+    $user   = $dbParts['user'];
+    $pass   = isset($dbParts['pass']) ? $dbParts['pass'] : '';
+    $dbname = ltrim($dbParts['path'], '/');
+} else {
+    // Fall back to local XAMPP / individual variables
+    $host   = getenv('MYSQLHOST') ?: "localhost";
+    $user   = getenv('MYSQLUSER') ?: "root";
+    $pass   = getenv('MYSQLPASSWORD') ?: "";
+    $dbname = getenv('MYSQLDATABASE') ?: "hotel_db1";
+    $port   = (int)(getenv('MYSQLPORT') ?: 3306);
+}
+
+// Establish the connection
+$conn = new mysqli($host, $user, $pass, $dbname, $port);
+
 if ($conn->connect_error) {
     die("Database Connection Fail: " . $conn->connect_error);
 }
 
-// Set global translation systems to decode Indian Rupee symbols (₹) and names accurately
 $conn->set_charset("utf8mb4");
 
 // Dynamic Favicon Fetch Function
@@ -26,5 +40,4 @@ function getSiteFavicon($conn) {
     }
     return $default;
 }
-
 ?>
