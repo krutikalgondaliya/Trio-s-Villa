@@ -1,32 +1,33 @@
 <?php
-// Check for Railway's connection URL first (Private or Public)
+// Report errors cleanly
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
+// Check for Railway environment variables
 $dbUrl = getenv('MYSQL_URL') ?: getenv('MYSQL_PRIVATE_URL') ?: getenv('DATABASE_URL');
 
 if ($dbUrl) {
-    $dbParts = parse_url($dbUrl);
-
-    $host   = $dbParts['host'];
-    $port   = isset($dbParts['port']) ? (int)$dbParts['port'] : 3306;
-    $user   = $dbParts['user'];
-    $pass   = isset($dbParts['pass']) ? $dbParts['pass'] : '';
-    $dbname = ltrim($dbParts['path'], '/');
+    $parts  = parse_url($dbUrl);
+    $host   = $parts['host'] ?? '127.0.0.1';
+    $port   = isset($parts['port']) ? (int)$parts['port'] : 3306;
+    $user   = $parts['user'] ?? 'root';
+    $pass   = $parts['pass'] ?? '';
+    $dbname = isset($parts['path']) ? ltrim($parts['path'], '/') : '';
 } else {
-    // Fall back to local XAMPP / individual variables
-    $host   = getenv('MYSQLHOST') ?: "localhost";
-    $user   = getenv('MYSQLUSER') ?: "root";
-    $pass   = getenv('MYSQLPASSWORD') ?: "";
-    $dbname = getenv('MYSQLDATABASE') ?: "hotel_db1";
+    // Read individual variables if set, otherwise fallback
+    $host   = getenv('MYSQLHOST') ?: '127.0.0.1';
     $port   = (int)(getenv('MYSQLPORT') ?: 3306);
+    $user   = getenv('MYSQLUSER') ?: 'root';
+    $pass   = getenv('MYSQLPASSWORD') ?: '';
+    $dbname = getenv('MYSQLDATABASE') ?: 'railway';
 }
 
-// Establish the connection
-$conn = new mysqli($host, $user, $pass, $dbname, $port);
-
-if ($conn->connect_error) {
-    die("Database Connection Fail: " . $conn->connect_error);
+try {
+    // Using IP/Host and explicit port avoids local Unix socket lookup
+    $conn = new mysqli($host, $user, $pass, $dbname, $port);
+    $conn->set_charset("utf8mb4");
+} catch (mysqli_sql_exception $e) {
+    die("Database Connection Failed: " . $e->getMessage());
 }
-
-$conn->set_charset("utf8mb4");
 
 // Dynamic Favicon Fetch Function
 function getSiteFavicon($conn) {
